@@ -6,6 +6,7 @@ qt_add_executable(sprixion
     ResizeCanvasDialog.h ResizeCanvasDialog.cpp
     ExportSheetDialog.h ExportSheetDialog.cpp
     LayersPanel.h LayersPanel.cpp PalettePanel.h PalettePanel.cpp ColorPicker.h ColorPicker.cpp
+    Timeline.h Timeline.cpp
 )
 target_link_libraries(sprixion PRIVATE sprixion_core Qt6::Widgets Qt6::Svg) # Svg: makes deploy tools ship the SVG icon plugin
 qt_add_resources(sprixion app_resources PREFIX / FILES

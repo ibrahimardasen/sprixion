@@ -4,6 +4,7 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QWheelEvent>
+#include <algorithm>
 #include <cmath>
 
 using namespace spx;
@@ -31,7 +32,13 @@ void CanvasView::setDocument(Document *doc)
     m_sel = {};
     m_pan = {};
     m_cachedFrame = -1;
-    if (doc) connect(doc, &Document::changed, this, [this] { m_cachedFrame = -1; update(); });
+    // Connected before any panel: structural changes (including undo) clamp layer/frame before the panels read them.
+    if (doc) connect(doc, &Document::changed, this, [this] {
+        m_ctx.layer = std::min<int>(m_ctx.layer, m_doc->sprite().layers.size() - 1);
+        m_ctx.frame = std::min<int>(m_ctx.frame, m_doc->sprite().frames.size() - 1);
+        m_cachedFrame = -1;
+        update();
+    });
     update();
     emit contextChanged();
 }
