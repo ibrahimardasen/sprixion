@@ -19,6 +19,8 @@ public:
     void apply(const QString &text, Sprite after);
     // Mutable cel access during a stroke (creates the cel); caller then calls touch().
     QImage &liveCel(int layer, int frame);
+    // Replaces the sprite without an undo entry: live preview of a drag; the caller restores it and then apply()s.
+    void previewSprite(Sprite s) { setSprite(std::move(s)); }
     void touch(const QRect &dirty) { emit changed(dirty); }
     // `before` = rect-sized pixels before the stroke; the live cel already holds the result.
     void commitCelEdit(const QString &text, int layer, int frame, const QRect &rect, const QImage &before);

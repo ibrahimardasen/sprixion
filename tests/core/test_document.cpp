@@ -19,6 +19,9 @@ private slots:
       d.apply("x", addFrame(d.sprite(),1)); QVERIFY(d.isModified()); d.undoStack()->setClean(); QVERIFY(!d.isModified()); }
     void changedSignalFires() { Document d(makeSprite({8,8})); QSignalSpy spy(&d, &Document::changed);
       d.apply("x", addFrame(d.sprite(),1)); QCOMPARE(spy.count(),1); }
+    void previewSpriteHasNoUndoAndEmitsChanged() { Document d(makeSprite({8,8})); QSignalSpy spy(&d, &Document::changed);
+      d.previewSprite(addLayer(d.sprite(),1)); QCOMPARE(d.sprite().layers.size(),2);
+      QCOMPARE(spy.count(),1); QVERIFY(spy.takeFirst().at(0).toRect().isNull()); QVERIFY(!d.undoStack()->canUndo()); }
     void touchAndCelUndoEmitDirtyRect() { Document d(makeSprite({8,8})); QSignalSpy spy(&d, &Document::changed);
       d.touch(QRect(1,1,2,2)); QCOMPARE(spy.takeFirst().at(0).toRect(), QRect(1,1,2,2));
       QRect r(2,2,1,1); QImage b = d.liveCel(0,0).copy(r); d.liveCel(0,0).setPixel(2,2,qRgba(1,2,3,255));
