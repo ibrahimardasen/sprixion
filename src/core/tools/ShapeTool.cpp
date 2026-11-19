@@ -46,7 +46,9 @@ void ShapeTool::release(ToolContext& c, QPoint p)
     m_pts.clear();
     if (d.isNull()) return;
     c.doc->touch(d);
-    const char* name = m_kind == Line ? "Line" : m_kind == Rect ? "Rectangle" : "Ellipse";
+    const char* name = m_kind == Line   ? QT_TRANSLATE_NOOP("Tool", "Line")
+                       : m_kind == Rect ? QT_TRANSLATE_NOOP("Tool", "Rectangle")
+                                        : QT_TRANSLATE_NOOP("Tool", "Ellipse");
     c.doc->commitCelEdit(QCoreApplication::translate("Tool", name), c.layer, c.frame, d, before.copy(d));
 }
 
