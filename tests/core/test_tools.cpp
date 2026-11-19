@@ -46,6 +46,24 @@ private slots:
         p.press(c, {1, 1}, Qt::LeftButton); p.release(c, {1, 1});
         QCOMPARE(qAlpha(cel(d).pixel(1, 1)), 0); QVERIFY(set(d, 0, 0)); QCOMPARE(d.undoStack()->count(), 1);
     }
+    void pressWithoutReleaseIsUndoable() {
+        Document d(makeSprite({8, 8})); ToolContext c{&d}; PencilTool p(false);
+        p.press(c, {0, 0}, Qt::LeftButton); p.move(c, {3, 0});
+        p.press(c, {0, 5}, Qt::LeftButton); p.move(c, {3, 5}); p.release(c, {3, 5});
+        d.undoStack()->undo(); d.undoStack()->undo();
+        QCOMPARE(d.undoStack()->count(), 2);
+        for (int y = 0; y < 8; ++y) for (int x = 0; x < 8; ++x) QCOMPARE(qAlpha(cel(d).pixel(x, y)), 0);
+    }
+    void eraserMirror() {
+        Document d(makeSprite({4, 4})); cel(d).fill(Qt::red); ToolContext c{&d}; c.mirrorH = true; PencilTool p(true);
+        p.press(c, {0, 1}, Qt::LeftButton); p.release(c, {0, 1});
+        QCOMPARE(qAlpha(cel(d).pixel(0, 1)), 0); QCOMPARE(qAlpha(cel(d).pixel(3, 1)), 0); QVERIFY(set(d, 1, 1));
+    }
+    void strokeLeavesAndReenters() {
+        Document d(makeSprite({8, 8})); ToolContext c{&d}; c.pixelPerfect = false; PencilTool p(false);
+        p.press(c, {1, 1}, Qt::LeftButton); p.move(c, {-3, 1}); p.move(c, {2, 2}); p.release(c, {2, 2});
+        QVERIFY(set(d, 1, 1)); QVERIFY(set(d, 0, 1)); QVERIFY(set(d, 2, 2)); QCOMPARE(d.undoStack()->count(), 1);
+    }
     void pixelPerfectStroke() {
         for (bool pp : {true, false}) {
             Document d(makeSprite({4, 4})); ToolContext c{&d}; c.pixelPerfect = pp; PencilTool p(false);
