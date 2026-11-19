@@ -9,6 +9,10 @@ add_library(sprixion_core STATIC
     tools/FillTool.cpp
     tools/ShapeTool.cpp
     tools/EyedropperTool.cpp
+    tools/SelectTool.cpp
+    Selection.cpp
+    io/PaletteIO.cpp
+    io/SheetExport.cpp
     io/SprxIO.cpp
     ../../third_party/miniz/miniz.c
 )
