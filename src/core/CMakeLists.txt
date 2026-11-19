@@ -5,9 +5,11 @@ add_library(sprixion_core STATIC
     Commands.cpp
     Raster.cpp
     Compositor.cpp
+    io/SprxIO.cpp
     ../../third_party/miniz/miniz.c
 )
-target_include_directories(sprixion_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/third_party/miniz)
+target_include_directories(sprixion_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(sprixion_core SYSTEM PUBLIC ${CMAKE_SOURCE_DIR}/third_party/miniz)
 target_link_libraries(sprixion_core PUBLIC Qt6::Core Qt6::Gui)
 
 # miniz is vendored third-party code: no warnings.
