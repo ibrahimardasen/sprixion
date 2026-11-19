@@ -5,6 +5,10 @@ add_library(sprixion_core STATIC
     Commands.cpp
     Raster.cpp
     Compositor.cpp
+    tools/PencilTool.cpp
+    tools/FillTool.cpp
+    tools/ShapeTool.cpp
+    tools/EyedropperTool.cpp
     io/SprxIO.cpp
     ../../third_party/miniz/miniz.c
 )
