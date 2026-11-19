@@ -80,6 +80,7 @@ void LayersPanel::setProps(int layer, const Sprite &base, int opacity, bool appl
     const int old = l.opacity;
     Sprite s = setLayerProps(base, layer, l.name, l.visible, opacity);
     if (!apply) { m_doc->previewSprite(std::move(s)); return; }
+    // A drag's base is the saved pre-drag copy: restore it so undo's "before" is right (keyboard base is the live sprite).
     if (&base != &m_doc->sprite()) m_doc->previewSprite(base); // undo's "before" is the pre-drag sprite
     if (opacity != old) m_doc->apply(tr("Layer Opacity"), std::move(s));
 }

@@ -112,6 +112,7 @@ ColorPicker::ColorPicker(CanvasView *canvas, QWidget *parent)
         if (c.isValid()) setColor(c);
         else refresh(); // invalid: revert
     });
+    connect(m_hex, &QLineEdit::returnPressed, canvas, qOverload<>(&QWidget::setFocus)); // so tool shortcuts work again
     connect(canvas, &CanvasView::contextChanged, this, &ColorPicker::refresh);
     refresh();
 }
