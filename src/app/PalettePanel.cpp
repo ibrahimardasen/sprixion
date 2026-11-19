@@ -97,8 +97,7 @@ void PalettePanel::setDocument(Document *doc)
 {
     QObject::disconnect(m_conn);
     m_doc = doc;
-    m_grid->selected = -1;
-    const auto show = [this] { m_grid->setColors(m_doc->sprite().palette); };
+    const auto show = [this] { m_grid->selected = -1; m_grid->setColors(m_doc->sprite().palette); };
     m_conn = connect(doc, &Document::changed, this, [show](const QRect &r) { if (r.isNull()) show(); });
     show();
 }
