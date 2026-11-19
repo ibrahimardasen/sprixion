@@ -12,7 +12,8 @@ class CanvasView : public QWidget
 public:
     explicit CanvasView(QWidget *parent = nullptr);
     void setDocument(spx::Document *doc); // resets selection, layer and frame
-    void setTool(spx::Tool *tool) { m_tool = tool; update(); }
+    void setTool(spx::Tool *tool) { endStroke(); m_tool = tool; update(); }
+    void endStroke(); // releases a stroke still open (shortcut fired mid-drag) so its pixels are committed
     spx::ToolContext &context() { return m_ctx; } // change layer/frame here, then call update()
     spx::Selection &selection() { return m_sel; }
     int zoom() const { return m_zoom; }
@@ -32,6 +33,7 @@ protected:
     void wheelEvent(QWheelEvent *) override;
     void keyPressEvent(QKeyEvent *) override;
     void keyReleaseEvent(QKeyEvent *) override;
+    void focusOutEvent(QFocusEvent *) override;
 
 private:
     void setZoomAt(int factor, QPointF anchor);
@@ -51,8 +53,10 @@ private:
     QPointF m_pan;
     bool m_grid = false, m_onion = false;
     int m_onionN[2] = {1, 1};
-    bool m_space = false, m_panning = false;
+    bool m_space = false;
     QPointF m_lastPan;
+    Qt::MouseButton m_panButton = Qt::NoButton;
+    QPoint m_lastPos; // last canvas position sent to the tool
     Qt::MouseButton m_drawButton = Qt::NoButton;
     QTimer m_ants;
     int m_antOffset = 0;
