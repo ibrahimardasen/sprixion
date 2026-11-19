@@ -30,7 +30,7 @@ private slots:
         QCOMPARE(spx::raster::pixelPerfect(s), (QVector<QPoint>{{0,0},{1,0},{2,0}}));
     }
     void ellipseOutline5x5() { auto p = spx::raster::ellipse({0,0,5,5},false);
-      for (QPoint q : {QPoint(2,0),QPoint(0,2),QPoint(4,2),QPoint(2,4)}) QVERIFY(p.contains(q)); QVERIFY(!p.contains(QPoint(0,0))); QVERIFY(!p.contains(QPoint(2,2))); }
+      for (QPoint q : {QPoint(2,0),QPoint(0,2),QPoint(4,2),QPoint(2,4)}) { QVERIFY(p.contains(q)); } QVERIFY(!p.contains(QPoint(0,0))); QVERIFY(!p.contains(QPoint(2,2))); }
     void ellipseFilledHasCenter() { QVERIFY(spx::raster::ellipse({0,0,5,5},true).contains(QPoint(2,2))); }
     void ellipse1x1() { QCOMPARE(spx::raster::ellipse({0,0,1,1},false).size(),1); }
     void ellipseSymmetric() {
@@ -48,7 +48,7 @@ private slots:
       spx::raster::plot(i,{{1,1}},qRgba(1,2,3,4),nullptr); QCOMPARE(i.pixel(1,1),qRgba(1,2,3,4));
       QRect d(7,7,1,1); spx::raster::plot(i,{{-1,-1}},1,&d); QCOMPARE(d,QRect(7,7,1,1)); }
     void fillStopsAtBorder() { QImage i(5,5,QImage::Format_ARGB32); i.fill(0);
-      for (int y=0;y<5;++y) i.setPixel(2,y,qRgba(0,0,0,255)); QRect d;
+      for (int y=0;y<5;++y) { i.setPixel(2,y,qRgba(0,0,0,255)); } QRect d;
       spx::raster::floodFill(i,{0,0},qRgba(255,0,0,255),&d); QCOMPARE(i.pixel(1,4),qRgba(255,0,0,255)); QCOMPARE(qAlpha(i.pixel(3,0)),0);
       QCOMPARE(d,QRect(0,0,2,5)); }
     void fillNoOps() { QImage i(3,3,QImage::Format_ARGB32); i.fill(0); QRect d(9,9,1,1);

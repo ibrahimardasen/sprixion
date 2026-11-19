@@ -63,6 +63,15 @@ private slots:
     void rejectsBadTag() { expectReject({{"manifest.json", manifest(J("[{'name':'t','from':1,'to':0}]"),"[]")}}); }
     void rejectsTagOutOfRange() { expectReject({{"manifest.json", manifest(J("[{'name':'t','from':0,'to':1}]"),"[]")}}); }
     void rejectsBadDuration() { expectReject({{"manifest.json", manifest("[]","[]",{},1,0)}}); }
+    void rejectsOversizedManifest() { expectReject({{"manifest.json", manifest("[]","[]") + QByteArray(17 << 20, ' ')}}); }
+    void rejectsDuplicateCel() { const QString c = J("{'layer':0,'frame':0,'file':'cels/0_0.png'}");
+      expectReject({{"manifest.json", manifest("[]","[" + c + "," + c + "]")}, {"cels/0_0.png", png({4,4})}}); }
+    void rejectsTooManyLayers() { QString ls; for (int i = 0; i < 256; ++i) ls += J("{'name':'L','visible':true,'opacity':255},"); // 257 with the manifest's own
+      const QByteArray k = J("'layers':[").toUtf8();
+      expectReject({{"manifest.json", manifest("[]","[]").replace(k, k + ls.toUtf8())}}); }
+    void rejectsBadOpacity() { expectReject({{"manifest.json", manifest("[]","[]").replace(J("'opacity':255").toUtf8(), J("'opacity':300").toUtf8())}}); }
+    void rejectsBadSliceGrid() { expectReject({{"manifest.json", manifest("[]","[]", J(",'sliceGrid':{'cellWidth':0,'cellHeight':8}"))}}); }
+    void rejectsCelWithoutFile() { expectReject({{"manifest.json", manifest("[]", J("[{'layer':0,'frame':0}]"))}}); }
     void rejectsBadPalette() { expectReject({{"manifest.json", manifest("[]","[]").replace(J("'palette':[]").toUtf8(), J("'palette':['red']").toUtf8())}}); }
     void rejectsHugeCanvas() { expectReject({{"manifest.json", manifest("[]","[]").replace(J("'width':4").toUtf8(), J("'width':2049").toUtf8())}}); }
     void toleratesUnknownKeysAndUpperPalette() { QTemporaryDir t; QString p = t.filePath("x.sprx");
