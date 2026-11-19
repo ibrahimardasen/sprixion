@@ -6,6 +6,7 @@
 #include "ResizeCanvasDialog.h"
 #include "Selection.h"
 #include "SpriteOps.h"
+#include "Timeline.h"
 #include "tools/EyedropperTool.h"
 #include "tools/FillTool.h"
 #include "tools/PencilTool.h"
@@ -21,6 +22,7 @@
 #include <QGuiApplication>
 #include <QLabel>
 #include <QMenuBar>
+#include <QScrollArea>
 #include <QSpinBox>
 #include <QStatusBar>
 #include <QToolBar>
@@ -107,20 +109,34 @@ void MainWindow::createDocks()
 {
     m_picker = new ColorPicker(m_canvas);
     auto *palette = new PalettePanel(m_canvas);
-    auto *layers = new LayersPanel(m_canvas, [this] { settleSelection(); });
+    auto *layers = new LayersPanel(m_canvas, [this] { settleSelection(); }, [this](int l) { setCurrent(l, m_canvas->context().frame); });
+    m_timeline = new Timeline(m_canvas, [this] { settleSelection(); }, [this](int l, int f) { setCurrent(l, f); });
     connect(palette, &PalettePanel::colorsChanged, m_picker, &ColorPicker::refresh);
     connect(this, &MainWindow::documentChanged, palette, &PalettePanel::setDocument);
     connect(this, &MainWindow::documentChanged, layers, &LayersPanel::setDocument);
-    const auto dock = [this](const QString &title, const char *name, QWidget *w) {
+    connect(this, &MainWindow::documentChanged, m_timeline, &Timeline::setDocument);
+    connect(this, &MainWindow::currentChanged, layers, &LayersPanel::rebuild);
+    connect(this, &MainWindow::currentChanged, m_timeline, [this] { m_timeline->update(); });
+    const auto dock = [this](const QString &title, const char *name, QWidget *w, Qt::DockWidgetArea area = Qt::RightDockWidgetArea) {
         auto *d = new QDockWidget(title, this);
         d->setObjectName(QLatin1String(name));
         d->setFeatures(d->features() & ~QDockWidget::DockWidgetClosable); // no View menu to bring it back
         d->setWidget(w);
-        addDockWidget(Qt::RightDockWidgetArea, d);
+        addDockWidget(area, d);
     };
     dock(tr("Color"), "color", m_picker);
     dock(tr("Palette"), "palette", palette);
     dock(tr("Layers"), "layers", layers);
+    auto *scroll = new QScrollArea;
+    scroll->setWidget(m_timeline);
+    scroll->setFrameShape(QFrame::NoFrame);
+    auto *timeline = new QWidget;
+    auto *col = new QVBoxLayout(timeline);
+    col->setContentsMargins(0, 0, 0, 0);
+    col->setSpacing(0);
+    col->addWidget(m_timeline->toolBar());
+    col->addWidget(scroll);
+    dock(tr("Timeline"), "timeline", timeline, Qt::BottomDockWidgetArea);
 }
 
 void MainWindow::createMenus()
@@ -199,8 +215,24 @@ void MainWindow::createMenus()
     zoomIn->setShortcuts({QKeySequence(Qt::Key_Plus), QKeySequence(Qt::Key_Equal), QKeySequence::ZoomIn});
     QAction *zoomOut = view->addAction(tr("Zoom &Out"), this, [this] { m_canvas->setZoom(m_canvas->zoom() / 2); });
     zoomOut->setShortcuts({QKeySequence(Qt::Key_Minus), QKeySequence::ZoomOut});
-    QAction *onion = view->addAction(tr("&Onion Skin"), QKeySequence(Qt::Key_F3), this, [this](bool on) { m_canvas->setOnionSkin(on, 1, 1); });
+    QAction *onion = view->addAction(tr("&Onion Skin"), QKeySequence(Qt::Key_F3));
     onion->setCheckable(true);
+    QToolBar *bar = m_timeline->toolBar();
+    bar->addSeparator();
+    bar->addAction(onion);
+    auto onionSpin = [bar](const QString &prefix, const QString &tip) {
+        auto *s = new QSpinBox;
+        s->setRange(1, 3);
+        s->setPrefix(prefix);
+        s->setToolTip(tip);
+        bar->addWidget(s);
+        return s;
+    };
+    QSpinBox *before = onionSpin(tr("Before "), tr("Onion skin frames before")), *after = onionSpin(tr("After "), tr("Onion skin frames after"));
+    auto syncOnion = [this, onion, before, after] { m_canvas->setOnionSkin(onion->isChecked(), before->value(), after->value()); };
+    connect(onion, &QAction::toggled, this, syncOnion);
+    connect(before, &QSpinBox::valueChanged, this, syncOnion);
+    connect(after, &QSpinBox::valueChanged, this, syncOnion);
 }
 
 void MainWindow::setDocument(std::unique_ptr<Document> doc)
@@ -227,6 +259,16 @@ void MainWindow::settleSelection(bool discard)
     if (discard) s.floating = QImage(); // undoing the lift restores the original pixels
     else dropSelection(*m_doc, s, m_canvas->context().layer, m_canvas->context().frame);
     m_canvas->update();
+}
+
+void MainWindow::setCurrent(int layer, int frame)
+{
+    ToolContext &c = m_canvas->context();
+    if (layer == c.layer && frame == c.frame) return;
+    settleSelection(); // floating pixels belong to the cel they were lifted from
+    c.layer = layer;
+    c.frame = frame;
+    emit currentChanged();
 }
 
 void MainWindow::spriteOp(const QString &text, const std::function<Sprite(Sprite)> &op)

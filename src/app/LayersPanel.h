@@ -12,17 +12,18 @@ class LayersPanel : public QWidget
 {
     Q_OBJECT
 public:
-    // `settle` drops floating pixels into the current layer; it runs before the current layer changes.
-    LayersPanel(CanvasView *canvas, std::function<void()> settle, QWidget *parent = nullptr);
+    // `settle` drops floating pixels before a structural change; `select` is MainWindow's path for changing the current layer.
+    LayersPanel(CanvasView *canvas, std::function<void()> settle, std::function<void(int layer)> select, QWidget *parent = nullptr);
     void setDocument(spx::Document *doc);
+    void rebuild();
 
 private:
-    void rebuild();
     void setProps(int layer, const spx::Sprite &base, int opacity, bool apply);
     void rowChanged(int row);
 
     CanvasView *m_canvas;
     std::function<void()> m_settle;
+    std::function<void(int)> m_select;
     spx::Document *m_doc = nullptr;
     QMetaObject::Connection m_conn;
     QListWidget *m_list;

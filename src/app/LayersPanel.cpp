@@ -9,8 +9,8 @@
 
 using namespace spx;
 
-LayersPanel::LayersPanel(CanvasView *canvas, std::function<void()> settle, QWidget *parent)
-    : QWidget(parent), m_canvas(canvas), m_settle(std::move(settle)), m_list(new QListWidget), m_opacity(new QSlider(Qt::Horizontal))
+LayersPanel::LayersPanel(CanvasView *canvas, std::function<void()> settle, std::function<void(int)> select, QWidget *parent)
+    : QWidget(parent), m_canvas(canvas), m_settle(std::move(settle)), m_select(std::move(select)), m_list(new QListWidget), m_opacity(new QSlider(Qt::Horizontal))
 {
     m_opacity->setRange(0, 255);
     m_opacity->setToolTip(tr("Layer opacity"));
@@ -37,7 +37,7 @@ LayersPanel::LayersPanel(CanvasView *canvas, std::function<void()> settle, QWidg
     button(QStringLiteral("−"), tr("Delete layer"), [this, cur] {
         if (!m_doc || m_doc->sprite().layers.size() <= 1) return;
         m_settle();
-        m_doc->apply(tr("Delete Layer"), removeLayer(m_doc->sprite(), cur())); // rebuild clamps the current layer
+        m_doc->apply(tr("Delete Layer"), removeLayer(m_doc->sprite(), cur())); // the canvas clamps the current layer
     });
     auto move = [this, cur](int delta) {
         const int to = cur() + delta;
@@ -96,11 +96,7 @@ void LayersPanel::setDocument(Document *doc)
 
 void LayersPanel::rowChanged(int row)
 {
-    if (m_syncing || row < 0 || !m_doc) return;
-    m_settle(); // floating pixels belong to the layer they were lifted from
-    m_canvas->context().layer = m_list->count() - 1 - row;
-    m_canvas->update();
-    rebuild();
+    if (!m_syncing && row >= 0 && m_doc) m_select(m_list->count() - 1 - row); // its currentChanged rebuilds this panel
 }
 
 void LayersPanel::rebuild()
@@ -108,8 +104,7 @@ void LayersPanel::rebuild()
     if (!m_doc) { m_list->clear(); return; }
     const QVector<Layer> &layers = m_doc->sprite().layers;
     const int n = layers.size();
-    int &cur = m_canvas->context().layer;
-    if (cur >= n) { cur = n - 1; m_canvas->update(); }
+    const int cur = m_canvas->context().layer;
     m_syncing = true;
     // Items are updated in place: a rename edit that triggered this must not have its item destroyed.
     while (m_list->count() > n) delete m_list->takeItem(0);

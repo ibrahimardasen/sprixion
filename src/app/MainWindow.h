@@ -9,6 +9,7 @@
 
 class CanvasView;
 class ColorPicker;
+class Timeline;
 
 class MainWindow : public QMainWindow
 {
@@ -23,6 +24,7 @@ public:
 
 signals:
     void documentChanged(spx::Document *doc); // after New/Open/Import; docks re-bind here
+    void currentChanged();                     // the current layer or frame changed through setCurrent()
 
 private:
     void createToolBar();
@@ -33,6 +35,7 @@ private:
     // The core ties floating pixels to neither undo nor a layer/frame: discard them before undo/redo,
     // drop them into the cel before switching layer/frame/tool, saving or exporting.
     void settleSelection(bool discard = false);
+    void setCurrent(int layer, int frame); // the one path for user layer/frame changes (playback ticks bypass it)
     void spriteOp(const QString &text, const std::function<spx::Sprite(spx::Sprite)> &op);
     void transformOp(const QString &text, const QTransform &t);
     void cut();
@@ -54,4 +57,5 @@ private:
     std::vector<std::unique_ptr<spx::Tool>> m_tools;
     QAction *m_selectTool = nullptr;
     ColorPicker *m_picker = nullptr;
+    Timeline *m_timeline = nullptr;
 };
