@@ -194,6 +194,7 @@ void MainWindow::updateTitle()
 
 void MainWindow::settleSelection(bool discard)
 {
+    m_canvas->endStroke();
     Selection &s = m_canvas->selection();
     if (discard) s.floating = QImage(); // undoing the lift restores the original pixels
     else dropSelection(*m_doc, s, m_canvas->context().layer, m_canvas->context().frame);

@@ -23,12 +23,12 @@ CanvasView::CanvasView(QWidget *parent) : QWidget(parent)
 
 void CanvasView::setDocument(Document *doc)
 {
+    endStroke();
     if (m_doc) disconnect(m_doc, nullptr, this, nullptr);
     m_doc = doc;
     m_ctx.doc = doc;
     m_ctx.layer = m_ctx.frame = 0;
     m_sel = {};
-    m_drawButton = Qt::NoButton;
     m_pan = {};
     m_cachedFrame = -1;
     if (doc) connect(doc, &Document::changed, this, [this] { m_cachedFrame = -1; update(); });
@@ -120,7 +120,7 @@ void CanvasView::paintEvent(QPaintEvent *)
     p.drawImage(canvas, m_composite);
     if (m_sel.isFloating()) p.drawImage(toScreen(QRect(m_sel.floatingPos, m_sel.floating.size())), m_sel.floating);
     if (m_tool)
-        for (const QPoint &pt : m_tool->preview()) p.fillRect(QRect(o + pt * m_zoom, QSize(m_zoom, m_zoom)), m_ctx.primary);
+        for (const QPoint &pt : m_tool->preview()) p.fillRect(QRect(o + pt * m_zoom, QSize(m_zoom, m_zoom)), m_drawButton == Qt::RightButton ? m_ctx.secondary : m_ctx.primary);
 
     // Only the visible pixel range is drawn: a 2048 canvas at 64x would otherwise mean 4096 lines per frame.
     const QPoint v0 = toCanvas(visible.topLeft()), v1 = toCanvas(visible.bottomRight());
@@ -153,44 +153,54 @@ void CanvasView::paintEvent(QPaintEvent *)
 
 void CanvasView::mousePressEvent(QMouseEvent *e)
 {
+    if (m_drawButton != Qt::NoButton || m_panButton != Qt::NoButton) return; // one gesture at a time
     if (e->button() == Qt::MiddleButton || (e->button() == Qt::LeftButton && m_space)) {
-        m_panning = true;
+        m_panButton = e->button();
         m_lastPan = e->position();
         setCursor(Qt::ClosedHandCursor);
         return;
     }
-    if (!m_doc || !m_tool || m_drawButton != Qt::NoButton || !isDrawButton(e->button())) return;
+    if (!m_doc || !m_tool || !isDrawButton(e->button())) return;
     m_drawButton = e->button();
     m_ctx.constrain = e->modifiers() & Qt::ShiftModifier;
-    m_tool->press(m_ctx, toCanvas(e->position()), e->button());
+    m_lastPos = toCanvas(e->position());
+    m_tool->press(m_ctx, m_lastPos, e->button());
     update();
     emit contextChanged(); // the eyedropper changes colors
 }
 
 void CanvasView::mouseMoveEvent(QMouseEvent *e)
 {
-    if (m_panning) {
+    if (m_panButton != Qt::NoButton) {
         m_pan += e->position() - m_lastPan;
         m_lastPan = e->position();
         update();
     } else if (m_drawButton != Qt::NoButton) {
         m_ctx.constrain = e->modifiers() & Qt::ShiftModifier;
-        m_tool->move(m_ctx, toCanvas(e->position()));
+        m_lastPos = toCanvas(e->position());
+        m_tool->move(m_ctx, m_lastPos);
         update();
     }
 }
 
 void CanvasView::mouseReleaseEvent(QMouseEvent *e)
 {
-    if (m_panning && (e->button() == Qt::MiddleButton || e->button() == Qt::LeftButton)) {
-        m_panning = false;
+    if (e->button() == m_panButton) {
+        m_panButton = Qt::NoButton;
         setCursor(m_space ? Qt::OpenHandCursor : Qt::CrossCursor);
     } else if (e->button() == m_drawButton) {
-        m_drawButton = Qt::NoButton;
-        m_tool->release(m_ctx, toCanvas(e->position()));
-        update();
-        emit contextChanged();
+        m_lastPos = toCanvas(e->position());
+        endStroke();
     }
+}
+
+void CanvasView::endStroke()
+{
+    if (m_drawButton == Qt::NoButton) return;
+    m_drawButton = Qt::NoButton;
+    m_tool->release(m_ctx, m_lastPos);
+    update();
+    emit contextChanged();
 }
 
 void CanvasView::wheelEvent(QWheelEvent *e)
@@ -202,11 +212,19 @@ void CanvasView::wheelEvent(QWheelEvent *e)
 void CanvasView::keyPressEvent(QKeyEvent *e)
 {
     if (e->key() != Qt::Key_Space) return QWidget::keyPressEvent(e);
-    if (!e->isAutoRepeat()) { m_space = true; if (!m_panning) setCursor(Qt::OpenHandCursor); }
+    if (!e->isAutoRepeat()) { m_space = true; if (m_panButton == Qt::NoButton) setCursor(Qt::OpenHandCursor); }
 }
 
 void CanvasView::keyReleaseEvent(QKeyEvent *e)
 {
     if (e->key() != Qt::Key_Space) return QWidget::keyReleaseEvent(e);
-    if (!e->isAutoRepeat()) { m_space = false; if (!m_panning) setCursor(Qt::CrossCursor); }
+    if (!e->isAutoRepeat()) { m_space = false; if (m_panButton == Qt::NoButton) setCursor(Qt::CrossCursor); }
+}
+
+void CanvasView::focusOutEvent(QFocusEvent *e)
+{
+    endStroke();
+    m_space = false; // the Space release goes to another widget
+    if (m_panButton == Qt::NoButton) setCursor(Qt::CrossCursor);
+    QWidget::focusOutEvent(e);
 }
