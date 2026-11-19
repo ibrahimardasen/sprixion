@@ -18,7 +18,6 @@ public:
     Timeline(CanvasView *canvas, std::function<void()> settle, std::function<void(int layer, int frame)> select, QWidget *parent = nullptr);
     void setDocument(spx::Document *doc);
     QToolBar *toolBar() const { return m_bar; } // MainWindow places it above the scroll area and adds the onion controls
-    void pause();
 
 protected:
     void paintEvent(QPaintEvent *) override;
@@ -35,6 +34,7 @@ private:
     int frame() const;
     std::pair<int, int> selection() const; // selected header range, clamped
     std::pair<int, int> playRange() const;
+    void pause();
     void togglePlay(bool on);
     void tick();
     void step(int delta);
@@ -51,6 +51,7 @@ private:
     QToolBar *m_bar;
     QAction *m_play, *m_loop, *m_tagOnly;
     QTimer m_timer;
+    std::pair<int, int> m_range; // play range, fixed when play starts
     int m_anchor = 0, m_selEnd = 0; // header range selection
     bool m_dragHeader = false;
 };
