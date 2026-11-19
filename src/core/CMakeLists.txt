@@ -4,6 +4,7 @@ add_library(sprixion_core STATIC
     Document.cpp
     Commands.cpp
     Raster.cpp
+    Compositor.cpp
     ../../third_party/miniz/miniz.c
 )
 target_include_directories(sprixion_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/third_party/miniz)
