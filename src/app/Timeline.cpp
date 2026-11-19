@@ -33,16 +33,10 @@ Timeline::Timeline(CanvasView *canvas, std::function<void()> settle, std::functi
     connect(&m_timer, &QTimer::timeout, this, &Timeline::tick);
     connect(canvas, &CanvasView::contextChanged, this, &Timeline::pause); // emitted on every canvas press: drawing pauses
 
-    // Widget-scoped so Enter still commits line edits and spin boxes elsewhere in the window.
     auto add = [&](QStyle::StandardPixmap icon, const QString &text, const QList<QKeySequence> &keys) {
         QAction *a = m_bar->addAction(style()->standardIcon(icon), text);
         a->setShortcuts(keys);
-        a->setShortcutContext(Qt::WidgetWithChildrenShortcut);
-        if (!keys.isEmpty()) {
-            a->setToolTip(tr("%1 (%2)").arg(text, keys.first().toString(QKeySequence::NativeText)));
-            canvas->addAction(a);
-            addAction(a);
-        }
+        if (!keys.isEmpty()) a->setToolTip(tr("%1 (%2)").arg(text, keys.first().toString(QKeySequence::NativeText)));
         return a;
     };
     QAction *prev = add(QStyle::SP_MediaSeekBackward, tr("Previous Frame"), {QKeySequence(Qt::ALT | Qt::Key_Comma)});
@@ -51,6 +45,10 @@ Timeline::Timeline(CanvasView *canvas, std::function<void()> settle, std::functi
     m_loop = add(QStyle::SP_BrowserReload, tr("Loop"), {});
     m_tagOnly = m_bar->addAction(tr("Tag Only"));
     m_tagOnly->setToolTip(tr("Play only the tag containing the current frame"));
+    // Widget-scoped so Enter still commits line edits and spin boxes elsewhere in the window.
+    m_play->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+    canvas->addAction(m_play);
+    addAction(m_play);
     m_play->setCheckable(true);
     m_loop->setCheckable(true);
     m_loop->setChecked(true);
@@ -155,8 +153,9 @@ void Timeline::mousePressEvent(QMouseEvent *e)
     if (h.zone == TagBar) return;
     const int f = h.frame >= 0 ? h.frame : frame();
     m_dragHeader = h.zone == Header && h.frame >= 0;
+    const auto [lo, hi] = selection();
     if (m_dragHeader && (e->modifiers() & Qt::ShiftModifier)) m_selEnd = f;
-    else m_anchor = m_selEnd = f;
+    else if (!(m_dragHeader && lo < hi && f >= lo && f <= hi)) m_anchor = m_selEnd = f; // keep it: double-click edits the range
     m_select(h.layer >= 0 ? h.layer : m_canvas->context().layer, f);
     update();
 }
@@ -198,6 +197,7 @@ void Timeline::contextMenuEvent(QContextMenuEvent *e)
     menu.addAction(tr("Delete Frame"), this, [this, f] { frameOp(tr("Delete Frame"), f, [f](Sprite s) { return removeFrame(std::move(s), f); }); })->setEnabled(n > 1);
     menu.addAction(tr("Move Left"), this, [this, f] { frameOp(tr("Move Frame"), f - 1, [f](Sprite s) { return moveFrame(std::move(s), f, f - 1); }); })->setEnabled(f > 0);
     menu.addAction(tr("Move Right"), this, [this, f] { frameOp(tr("Move Frame"), f + 1, [f](Sprite s) { return moveFrame(std::move(s), f, f + 1); }); })->setEnabled(f < n - 1);
+    menu.addAction(tr("Frame Duration…"), this, [this, f] { editDurations(f); });
     menu.addSeparator();
     menu.addAction(tr("New Tag…"), this, &Timeline::newTag);
     menu.exec(e->globalPos());
@@ -282,14 +282,16 @@ void Timeline::togglePlay(bool on)
     if (!on || !m_doc) { m_timer.stop(); if (!m_doc) pause(); return; }
     m_settle(); // once per play: ticks change the frame without settling
     if (!m_play->isChecked()) return; // settling ended an open stroke, which pauses
-    const auto [a, b] = playRange();
+    m_range = playRange();
+    const auto [a, b] = m_range;
     if (!m_loop->isChecked() && frame() == b) { m_canvas->context().frame = a; m_canvas->update(); update(); }
     m_timer.start(m_doc->sprite().frames[frame()].durationMs);
 }
 
 void Timeline::tick()
 {
-    const auto [a, b] = playRange();
+    if (m_canvas->selection().isFloating()) return pause(); // a frame change would move floating pixels to another frame
+    const int b = std::min(m_range.second, int(m_doc->sprite().frames.size()) - 1), a = std::min(m_range.first, b); // undo may shrink frames
     int f = frame() + 1;
     if (f > b) {
         if (!m_loop->isChecked()) return pause();
