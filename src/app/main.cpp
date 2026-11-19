@@ -1,6 +1,7 @@
+#include "MainWindow.h"
 #include <QApplication>
+#include <QFile>
 #include <QLocale>
-#include <QMainWindow>
 #include <QTranslator>
 
 int main(int argc, char *argv[])
@@ -8,14 +9,15 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("Sprixion"));
     app.setApplicationVersion(QStringLiteral("0.1.0"));
+    QApplication::setStyle(QStringLiteral("Fusion"));
+    QFile qss(QStringLiteral(":/theme.qss"));
+    if (qss.open(QIODevice::ReadOnly)) app.setStyleSheet(QString::fromUtf8(qss.readAll()));
 
     QTranslator translator;
     if (translator.load(QStringLiteral(":/i18n/sprixion_") + QLocale::system().name()))
         app.installTranslator(&translator);
 
-    QMainWindow window;
-    window.setWindowTitle(QObject::tr("Sprixion"));
-    window.resize(1024, 700);
+    MainWindow window;
     window.show();
     return app.exec();
 }
