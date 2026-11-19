@@ -8,6 +8,7 @@
 #include <vector>
 
 class CanvasView;
+class ColorPicker;
 
 class MainWindow : public QMainWindow
 {
@@ -20,9 +21,13 @@ public:
     bool saveAs();
     spx::Document *document() const { return m_doc.get(); }
 
+signals:
+    void documentChanged(spx::Document *doc); // after New/Open/Import; docks re-bind here
+
 private:
     void createToolBar();
     void createMenus();
+    void createDocks();
     void setDocument(std::unique_ptr<spx::Document> doc);
     void updateTitle();
     // The core ties floating pixels to neither undo nor a layer/frame: discard them before undo/redo,
@@ -48,4 +53,5 @@ private:
     std::unique_ptr<spx::Document> m_doc;
     std::vector<std::unique_ptr<spx::Tool>> m_tools;
     QAction *m_selectTool = nullptr;
+    ColorPicker *m_picker = nullptr;
 };

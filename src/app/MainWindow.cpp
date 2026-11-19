@@ -1,5 +1,8 @@
 #include "MainWindow.h"
 #include "CanvasView.h"
+#include "ColorPicker.h"
+#include "LayersPanel.h"
+#include "PalettePanel.h"
 #include "ResizeCanvasDialog.h"
 #include "Selection.h"
 #include "SpriteOps.h"
@@ -10,6 +13,7 @@
 #include "tools/ShapeTool.h"
 #include <QActionGroup>
 #include <QClipboard>
+#include <QDockWidget>
 #include <QDialogButtonBox>
 #include <QFileInfo>
 #include <QFormLayout>
@@ -28,6 +32,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_canvas(new Canv
 {
     setCentralWidget(m_canvas);
     createToolBar();
+    createDocks();
     createMenus();
 
     auto *zoomLabel = new QLabel;
@@ -98,6 +103,26 @@ void MainWindow::createToolBar()
     addToggle("filled", tr("Filled shapes"), &ctx.filled);
 }
 
+void MainWindow::createDocks()
+{
+    m_picker = new ColorPicker(m_canvas);
+    auto *palette = new PalettePanel(m_canvas);
+    auto *layers = new LayersPanel(m_canvas, [this] { settleSelection(); });
+    connect(palette, &PalettePanel::colorsChanged, m_picker, &ColorPicker::refresh);
+    connect(this, &MainWindow::documentChanged, palette, &PalettePanel::setDocument);
+    connect(this, &MainWindow::documentChanged, layers, &LayersPanel::setDocument);
+    const auto dock = [this](const QString &title, const char *name, QWidget *w) {
+        auto *d = new QDockWidget(title, this);
+        d->setObjectName(QLatin1String(name));
+        d->setFeatures(d->features() & ~QDockWidget::DockWidgetClosable); // no View menu to bring it back
+        d->setWidget(w);
+        addDockWidget(Qt::RightDockWidgetArea, d);
+    };
+    dock(tr("Color"), "color", m_picker);
+    dock(tr("Palette"), "palette", palette);
+    dock(tr("Layers"), "layers", layers);
+}
+
 void MainWindow::createMenus()
 {
     QMenu *file = menuBar()->addMenu(tr("&File"));
@@ -119,6 +144,8 @@ void MainWindow::createMenus()
     redo->setShortcuts({QKeySequence(Qt::CTRL | Qt::Key_Y), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Z)});
     connect(&m_undo, &QUndoGroup::canUndoChanged, undo, &QAction::setEnabled);
     connect(&m_undo, &QUndoGroup::canRedoChanged, redo, &QAction::setEnabled);
+    edit->addSeparator();
+    edit->addAction(tr("S&wap Colors"), QKeySequence(Qt::Key_X), m_picker, &ColorPicker::swap);
     edit->addSeparator();
     edit->addAction(tr("Cu&t"), QKeySequence::Cut, this, &MainWindow::cut);
     edit->addAction(tr("&Copy"), QKeySequence::Copy, this, &MainWindow::copy);
@@ -182,6 +209,7 @@ void MainWindow::setDocument(std::unique_ptr<Document> doc)
     m_undo.addStack(doc->undoStack());
     m_undo.setActiveStack(doc->undoStack());
     m_doc = std::move(doc); // the old document and its stack go away here
+    emit documentChanged(m_doc.get());
     setWindowModified(m_doc->isModified());
     updateTitle();
 }
