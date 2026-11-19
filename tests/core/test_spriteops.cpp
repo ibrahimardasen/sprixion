@@ -31,6 +31,20 @@ private slots:
       QCOMPARE(t.layers[0].cels[0].pixel(3,0), qRgba(9,9,9,255)); QCOMPARE(t.layers[0].cels[0].size(), QSize(4,4)); }
     void outOfRangeIsNoop() { auto s = spx::makeSprite({4,4});
       QCOMPARE(spx::moveFrame(s,5,0).frames.size(), 1); QCOMPARE(spx::setFrameDuration(s,3,5).frames[0].durationMs, 100); }
+    void rotate90IsClockwise() { auto s = spx::makeSprite({4,2}); spx::celForWrite(s,0,0).setPixel(0,0,qRgba(255,0,0,255));
+      s = spx::rotateSprite(s,90); QCOMPARE(s.size, QSize(2,4));
+      QCOMPARE(s.layers[0].cels[0].pixel(1,0), qRgba(255,0,0,255));
+      QCOMPARE(s.layers[0].cels[0].format(), QImage::Format_ARGB32);
+      QCOMPARE(spx::flipSprite(s, Qt::Vertical).layers[0].cels[0].format(), QImage::Format_ARGB32);
+      QCOMPARE(spx::transformCel(s,0,0,QTransform().scale(-1,1)).layers[0].cels[0].format(), QImage::Format_ARGB32); }
+    void moveFrameMovesCels() { auto s = spx::makeSprite({4,4}); s = spx::addFrame(s,1);
+      spx::celForWrite(s,0,0).setPixel(0,0,qRgba(7,7,7,255)); s = spx::moveFrame(s,0,1);
+      QCOMPARE(s.layers[0].cels[1].pixel(0,0), qRgba(7,7,7,255)); QVERIFY(s.layers[0].cels[0].isNull());
+      QCOMPARE(s.layers[0].cels.size(), s.frames.size()); }
+    void moveLayerMovesNames() { auto s = spx::addLayer(spx::makeSprite({4,4}),1);
+      spx::celForWrite(s,0,0).setPixel(0,0,qRgba(7,7,7,255)); s = spx::moveLayer(s,0,1);
+      QCOMPARE(s.layers[1].name, QString("Layer 1")); QCOMPARE(s.layers[0].name, QString("Layer 2"));
+      QCOMPARE(s.layers[1].cels[0].pixel(0,0), qRgba(7,7,7,255)); QCOMPARE(s.layers[0].cels.size(), s.frames.size()); }
 };
 
 QTEST_MAIN(TestSpriteOps)
