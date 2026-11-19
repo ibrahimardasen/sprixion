@@ -14,9 +14,10 @@ namespace {
 
 QString tr(const char *s) { return QCoreApplication::translate("SprxIO", s); }
 
-QByteArray toPng(const QImage &i)
+bool toPng(const QImage &i, QByteArray &b)
 {
-    QByteArray b; QBuffer buf(&b); buf.open(QIODevice::WriteOnly); i.save(&buf, "PNG"); return b;
+    QBuffer buf(&b);
+    return buf.open(QIODevice::WriteOnly) && i.save(&buf, "PNG");
 }
 
 // Colors as #rrggbbaa (not QColor::HexArgb, which puts alpha first).
@@ -30,10 +31,14 @@ std::optional<QColor> colorFromStr(const QString &s)
     return QColor(v >> 24 & 255, v >> 16 & 255, v >> 8 & 255, v & 255);
 }
 
-bool readEntry(mz_zip_archive &z, const QString &name, QByteArray &out)
+// Rejects entries declaring more than maxSize uncompressed bytes (zip-bomb guard) before inflating.
+bool readEntry(mz_zip_archive &z, const QString &name, qint64 maxSize, QByteArray &out)
 {
+    const int idx = mz_zip_reader_locate_file(&z, name.toUtf8().constData(), nullptr, 0);
+    mz_zip_archive_file_stat st;
+    if (idx < 0 || !mz_zip_reader_file_stat(&z, mz_uint(idx), &st) || st.m_uncomp_size > mz_uint64(maxSize)) return false;
     size_t n = 0;
-    void *p = mz_zip_reader_extract_file_to_heap(&z, name.toUtf8().constData(), &n, 0);
+    void *p = mz_zip_reader_extract_to_heap(&z, mz_uint(idx), &n, 0);
     if (!p) return false;
     out = QByteArray(static_cast<const char *>(p), qsizetype(n));
     mz_free(p);
@@ -62,7 +67,7 @@ bool saveSprx(const Sprite &s, const QString &path, QString *error)
     if (!mz_zip_writer_init_heap(&z, 0, 0)) return fail(tr("Could not create the file."));
     bool ok = true;
     auto add = [&](const QString &name, const QByteArray &data) {
-        ok = ok && mz_zip_writer_add_mem(&z, name.toUtf8().constData(), data.constData(), size_t(data.size()), MZ_DEFAULT_COMPRESSION);
+        ok = ok && !data.isEmpty() && mz_zip_writer_add_mem(&z, name.toUtf8().constData(), data.constData(), size_t(data.size()), MZ_DEFAULT_COMPRESSION);
     };
     for (int l = 0; l < s.layers.size(); ++l)
         for (int f = 0; f < s.frames.size(); ++f) {
@@ -70,9 +75,11 @@ bool saveSprx(const Sprite &s, const QString &path, QString *error)
             if (c.isNull()) continue;
             const QString file = QString("cels/%1_%2.png").arg(l).arg(f);
             cels.append(QJsonObject{{"layer", l}, {"frame", f}, {"file", file}});
-            add(file, toPng(c));
+            QByteArray b; ok = ok && toPng(c, b); add(file, b);
         }
-    for (int f = 0; f < s.frames.size(); ++f) add(QString("flat/%1.png").arg(f), toPng(compositeFrame(s, f)));
+    for (int f = 0; f < s.frames.size(); ++f) {
+        QByteArray b; ok = ok && toPng(compositeFrame(s, f), b); add(QString("flat/%1.png").arg(f), b);
+    }
     add("manifest.json", QJsonDocument(QJsonObject{{"formatVersion", 1}, {"width", s.size.width()}, {"height", s.size.height()},
         {"layers", layers}, {"frames", frames}, {"tags", tags}, {"palette", palette}, {"sliceGrid", grid}, {"cels", cels}}).toJson());
 
@@ -101,7 +108,7 @@ std::optional<Sprite> loadSprx(const QString &path, QString *error)
 
     QByteArray mf;
     QJsonParseError pe;
-    if (!readEntry(z, "manifest.json", mf)) return bad();
+    if (!readEntry(z, "manifest.json", 16 << 20, mf)) return bad();
     const QJsonObject m = QJsonDocument::fromJson(mf, &pe).object();
     if (pe.error != QJsonParseError::NoError || m.isEmpty()) return bad();
     if (m["formatVersion"].toInt() != 1) {
@@ -112,14 +119,17 @@ std::optional<Sprite> loadSprx(const QString &path, QString *error)
     s.size = QSize(m["width"].toInt(), m["height"].toInt());
     if (s.size.width() < 1 || s.size.width() > 2048 || s.size.height() < 1 || s.size.height() > 2048) return bad();
     const QJsonArray layers = m["layers"].toArray(), frames = m["frames"].toArray();
-    if (layers.isEmpty() || frames.isEmpty()) return bad();
+    if (layers.isEmpty() || frames.isEmpty() || layers.size() > 256 || frames.size() > 4096) return bad();
     for (const QJsonValue &v : frames) {
         const int d = v["duration"].toInt();
         if (d < 1) return bad();
         s.frames.append(Frame{d});
     }
-    for (const QJsonValue &v : layers)
-        s.layers.append(Layer{v["name"].toString(), v["visible"].toBool(true), v["opacity"].toInt(255), QVector<QImage>(s.frames.size())});
+    for (const QJsonValue &v : layers) {
+        const int o = v["opacity"].toInt(255);
+        if (o < 0 || o > 255) return bad();
+        s.layers.append(Layer{v["name"].toString(), v["visible"].toBool(true), o, QVector<QImage>(s.frames.size())});
+    }
     for (const QJsonValue &v : m["tags"].toArray()) {
         const Tag t{v["name"].toString(), v["from"].toInt(), v["to"].toInt()};
         if (t.from < 0 || t.from > t.to || t.to >= s.frames.size()) return bad();
@@ -130,15 +140,21 @@ std::optional<Sprite> loadSprx(const QString &path, QString *error)
         if (!c) return bad();
         s.palette.append(*c);
     }
-    if (const QJsonObject g = m["sliceGrid"].toObject(); !g.isEmpty())
-        s.sliceGrid = SliceGrid{g["cellWidth"].toInt(), g["cellHeight"].toInt(), g["offsetX"].toInt(), g["offsetY"].toInt(),
-                                g["spacingX"].toInt(), g["spacingY"].toInt()};
+    if (const QJsonObject g = m["sliceGrid"].toObject(); !g.isEmpty()) {
+        const SliceGrid sg{g["cellWidth"].toInt(), g["cellHeight"].toInt(), g["offsetX"].toInt(), g["offsetY"].toInt(),
+                           g["spacingX"].toInt(), g["spacingY"].toInt()};
+        if (sg.cellWidth < 1 || sg.cellHeight < 1 || sg.offsetX < 0 || sg.offsetY < 0 || sg.spacingX < 0 || sg.spacingY < 0) return bad();
+        s.sliceGrid = sg;
+    }
+    qint64 celBytes = 0; // decoded total, capped at 2 GiB
     for (const QJsonValue &v : m["cels"].toArray()) {
         const int l = v["layer"].toInt(-1), f = v["frame"].toInt(-1);
         QByteArray png;
-        if (l < 0 || l >= s.layers.size() || f < 0 || f >= s.frames.size() || !readEntry(z, v["file"].toString(), png)) return bad();
+        if (l < 0 || l >= s.layers.size() || f < 0 || f >= s.frames.size() || !readEntry(z, v["file"].toString(), qint64(2048) * 2048 * 4 + (1 << 20), png)) return bad();
         QImage img = QImage::fromData(png).convertToFormat(QImage::Format_ARGB32);
-        if (img.size() != s.size) return bad();
+        if (img.size() != s.size || !s.layers[l].cels[f].isNull()) return bad(); // wrong size or duplicate entry
+        celBytes += qint64(s.size.width()) * s.size.height() * 4;
+        if (celBytes > (qint64(2) << 30)) return fail(tr("This file is too large to open."));
         s.layers[l].cels[f] = img;
     }
     return s;
