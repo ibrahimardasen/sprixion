@@ -12,7 +12,7 @@ class LayersPanel : public QWidget
 {
     Q_OBJECT
 public:
-    // `settle` drops floating pixels before a structural change; `select` is MainWindow's path for changing the current layer.
+    // `settle` drops floating pixels before any layer edit; `select` is MainWindow's path for changing the current layer.
     LayersPanel(CanvasView *canvas, std::function<void()> settle, std::function<void(int layer)> select, QWidget *parent = nullptr);
     void setDocument(spx::Document *doc);
     void rebuild();

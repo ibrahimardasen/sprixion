@@ -12,6 +12,7 @@ struct Selection {
     QRect rect;
     QImage floating;
     QPoint floatingPos;
+    bool lifted = false; // floating pixels came from the cel (the lift is on the undo stack), not from a paste
     bool isActive() const { return !rect.isNull(); }
     bool isFloating() const { return !floating.isNull(); }
 };

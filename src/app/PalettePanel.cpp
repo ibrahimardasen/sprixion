@@ -47,7 +47,7 @@ protected:
     }
 };
 
-PalettePanel::PalettePanel(CanvasView *canvas, QWidget *parent) : QWidget(parent), m_canvas(canvas), m_grid(new Grid)
+PalettePanel::PalettePanel(CanvasView *canvas, std::function<void()> settle, QWidget *parent) : QWidget(parent), m_canvas(canvas), m_settle(std::move(settle)), m_grid(new Grid)
 {
     auto *scroll = new QScrollArea;
     scroll->setWidgetResizable(true);
@@ -88,6 +88,7 @@ PalettePanel::PalettePanel(CanvasView *canvas, QWidget *parent) : QWidget(parent
 void PalettePanel::editPalette(const QString &text, const std::function<void(QVector<QColor> &)> &edit)
 {
     if (!m_doc) return;
+    m_settle();
     Sprite s = m_doc->sprite();
     edit(s.palette);
     m_doc->apply(text, std::move(s));

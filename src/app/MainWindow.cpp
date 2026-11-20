@@ -112,7 +112,7 @@ void MainWindow::createToolBar()
 void MainWindow::createDocks()
 {
     m_picker = new ColorPicker(m_canvas);
-    auto *palette = new PalettePanel(m_canvas);
+    auto *palette = new PalettePanel(m_canvas, [this] { settleSelection(); });
     auto *layers = new LayersPanel(m_canvas, [this] { settleSelection(); }, [this](int l) { setCurrent(l, m_canvas->context().frame); });
     m_timeline = new Timeline(m_canvas, [this] { settleSelection(); }, [this](int l, int f) { setCurrent(l, f); });
     connect(palette, &PalettePanel::colorsChanged, m_picker, &ColorPicker::refresh);
@@ -159,7 +159,11 @@ void MainWindow::createMenus()
     file->addAction(tr("&Quit"), QKeySequence::Quit, this, &QWidget::close);
 
     QMenu *edit = menuBar()->addMenu(tr("&Edit"));
-    QAction *undo = edit->addAction(tr("&Undo"), QKeySequence::Undo, this, [this] { settleSelection(true); m_undo.undo(); });
+    QAction *undo = edit->addAction(tr("&Undo"), QKeySequence::Undo, this, [this] {
+        const bool pasted = m_canvas->selection().isFloating() && !m_canvas->selection().lifted;
+        settleSelection(true);
+        if (!pasted) m_undo.undo(); // a paste has no undo entry: discarding it is the whole undo
+    });
     QAction *redo = edit->addAction(tr("&Redo"), this, [this] { settleSelection(true); m_undo.redo(); });
     redo->setShortcuts({QKeySequence(Qt::CTRL | Qt::Key_Y), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Z)});
     connect(&m_undo, &QUndoGroup::canUndoChanged, undo, &QAction::setEnabled);
@@ -271,7 +275,7 @@ void MainWindow::settleSelection(bool discard)
 {
     m_canvas->endStroke();
     Selection &s = m_canvas->selection();
-    if (discard) s.floating = QImage(); // undoing the lift restores the original pixels
+    if (discard) s = {}; // floating pixels are thrown away; a lift keeps the original pixels in its undo entry
     else dropSelection(*m_doc, s, m_canvas->context().layer, m_canvas->context().frame);
     m_canvas->update();
 }
@@ -298,6 +302,7 @@ void MainWindow::transformOp(const QString &text, const QTransform &t)
     Selection &sel = m_canvas->selection();
     const ToolContext &c = m_canvas->context();
     if (sel.isActive()) { // an unlifted selection is lifted so only its pixels turn
+        if (!sel.isFloating()) m_selectTool->trigger(); // a stroke by another tool must not land on top of the lift
         liftSelection(*m_doc, sel, c.layer, c.frame);
         transformSelection(sel, t);
         m_canvas->update();
@@ -360,6 +365,7 @@ void MainWindow::editSliceGrid()
     layout->addWidget(box);
     layout->addWidget(buttons);
     if (d.exec() != QDialog::Accepted) return;
+    settleSelection();
     Sprite s = m_doc->sprite();
     if (box->isChecked()) s.sliceGrid = SliceGrid{cw->value(), ch->value(), ox->value(), oy->value(), sx->value(), sy->value()};
     else s.sliceGrid.reset();
