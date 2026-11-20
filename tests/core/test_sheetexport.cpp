@@ -26,7 +26,7 @@ private slots:
         QCOMPARE(m["frameTags"][0]["name"].toString(), QString("walk"));
         QCOMPARE(m["frameTags"][0]["direction"].toString(), QString("forward"));
         QCOMPARE(m["app"].toString(), QString("Sprixion")); QCOMPARE(m["image"].toString(), QString("a.png"));
-        QCOMPARE(m["version"].toString(), QString("0.1.0")); QCOMPARE(m["scale"].toString(), QString("1"));
+        QCOMPARE(m["version"].toString(), QString("0.1.1")); QCOMPARE(m["scale"].toString(), QString("1"));
         QCOMPARE(r.json["frames"][0]["duration"].toInt(), 100);
     }
     void horizontalLayout() {

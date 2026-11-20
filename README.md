@@ -4,7 +4,7 @@
 
 Draw your sprites, animate them on a timeline, save the `.sprx` file into your Unity project, and get sliced sprites and ready-to-use animation clips automatically. You don't need to export anything or slice it by hand.
 
-> **Status:** early release, version 0.1.0. The core editor and Unity importer work, but expect rough edges. Bug reports are welcome.
+> **Status:** early release, version 0.1.1. The core editor and Unity importer work, but expect rough edges. Bug reports are welcome.
 
 ## Features
 
