@@ -1,0 +1,4 @@
+{
+    "name": "Sprixion.Importer.Editor",
+    "includePlatforms": ["Editor"]
+}
