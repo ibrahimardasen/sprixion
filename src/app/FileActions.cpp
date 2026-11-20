@@ -158,6 +158,7 @@ void MainWindow::importPalette()
 
 bool MainWindow::maybeSave()
 {
+    settleSelection(); // floating pixels are not on the undo stack, so they only count as changes once dropped
     if (!m_doc->isModified()) return true;
     const QString name = m_doc->filePath.isEmpty() ? tr("Untitled") : QFileInfo(m_doc->filePath).fileName();
     const auto r = QMessageBox::question(this, tr("Unsaved Changes"), tr("Save changes to %1?").arg(name),
@@ -171,7 +172,8 @@ void MainWindow::offerRecovery()
         const QJsonObject meta = Autosave::info(path);
         const QString original = meta.value(QLatin1String("originalPath")).toString();
         const QString name = original.isEmpty() ? tr("Untitled") : QFileInfo(original).fileName();
-        const QDateTime time = QDateTime::fromString(meta.value(QLatin1String("savedAt")).toString(), Qt::ISODate);
+        QDateTime time = QDateTime::fromString(meta.value(QLatin1String("savedAt")).toString(), Qt::ISODate);
+        if (!time.isValid()) time = QFileInfo(path).lastModified(); // metadata unreadable
         QMessageBox box(QMessageBox::Question, tr("Recover Unsaved Work"),
                         tr("Sprixion did not close cleanly. Restore %1 (autosaved %2)?").arg(name, QLocale().toString(time, QLocale::ShortFormat)), QMessageBox::NoButton, this);
         QPushButton *restore = box.addButton(tr("Restore"), QMessageBox::AcceptRole);
