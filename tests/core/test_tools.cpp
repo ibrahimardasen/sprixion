@@ -94,6 +94,7 @@ private slots:
         e.press(c, {0, 0}, Qt::LeftButton); QCOMPARE(c.primary, QColor(Qt::red));
         e.press(c, {0, 0}, Qt::RightButton); QCOMPARE(c.secondary, QColor(Qt::red));
         c.primary = Qt::green; e.press(c, {9, 9}, Qt::LeftButton); QCOMPARE(c.primary, QColor(Qt::green));
+        e.press(c, {1, 1}, Qt::LeftButton); QCOMPARE(c.primary, QColor(Qt::green)); // empty pixel keeps the color
         QCOMPARE(d.undoStack()->count(), 0);
     }
     void fillTool() {

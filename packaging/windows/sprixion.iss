@@ -1,13 +1,13 @@
 ; Built by deploy.ps1, which passes /DDistDir (the windeployqt output folder).
 [Setup]
 AppName=Sprixion
-AppVersion=0.1.0
+AppVersion=0.1.1
 DefaultDirName={autopf}\Sprixion
 DefaultGroupName=Sprixion
 LicenseFile=..\..\LICENSE
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-OutputBaseFilename=Sprixion-0.1.0-setup
+OutputBaseFilename=Sprixion-0.1.1-setup
 UninstallDisplayIcon={app}\sprixion.exe
 Compression=lzma2
 SolidCompression=yes

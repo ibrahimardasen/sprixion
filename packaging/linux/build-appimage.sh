@@ -23,7 +23,7 @@ QMAKE=${QMAKE:-$(command -v qmake6 || command -v qmake || true)}
 export QMAKE
 export EXTRA_QT_PLUGINS="iconengines;imageformats" # SVG icons are loaded at runtime, so make sure they ship
 export EXTRA_PLATFORM_PLUGINS=libqoffscreen.so # lets CI smoke-test headless
-export LINUXDEPLOY_OUTPUT_VERSION=0.1.0
+export LINUXDEPLOY_OUTPUT_VERSION=0.1.1
 linuxdeploy-x86_64.AppImage --appdir build-release/AppDir --plugin qt \
   --executable build-release/src/app/sprixion \
   --desktop-file packaging/linux/sprixion.desktop \

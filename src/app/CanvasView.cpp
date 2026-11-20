@@ -86,11 +86,13 @@ void CanvasView::recomposite()
 {
     const Sprite &s = m_doc->sprite();
     const int f = m_ctx.frame;
-    m_composite = compositeFrame(s, f);
+    // Premultiplied is QPainter's native format: drawing straight ARGB32 converts the whole image on every repaint.
+    const auto display = [&s](int frame) { return compositeFrame(s, frame).convertToFormat(QImage::Format_ARGB32_Premultiplied); };
+    m_composite = display(f);
     m_onionBefore.clear();
     m_onionAfter.clear();
-    for (int i = 1; m_onion && i <= m_onionN[0] && f - i >= 0; ++i) m_onionBefore << compositeFrame(s, f - i);
-    for (int i = 1; m_onion && i <= m_onionN[1] && f + i < s.frames.size(); ++i) m_onionAfter << compositeFrame(s, f + i);
+    for (int i = 1; m_onion && i <= m_onionN[0] && f - i >= 0; ++i) m_onionBefore << display(f - i);
+    for (int i = 1; m_onion && i <= m_onionN[1] && f + i < s.frames.size(); ++i) m_onionAfter << display(f + i);
     m_cachedFrame = f;
 }
 

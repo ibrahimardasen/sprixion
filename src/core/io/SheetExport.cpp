@@ -30,7 +30,7 @@ SheetResult exportSheet(const Sprite& s, SheetLayout layout, int columns, const 
     QJsonArray tags;
     for (const Tag& t : s.tags)
         tags << QJsonObject{{"name", t.name}, {"from", t.from}, {"to", t.to}, {"direction", "forward"}};
-    const QJsonObject meta{{"app", "Sprixion"}, {"version", "0.1.0"}, {"image", imageFileName}, {"format", "RGBA8888"},
+    const QJsonObject meta{{"app", "Sprixion"}, {"version", "0.1.1"}, {"image", imageFileName}, {"format", "RGBA8888"},
                            {"size", QJsonObject{{"w", img.width()}, {"h", img.height()}}}, {"scale", "1"}, {"frameTags", tags}};
     return {img, QJsonDocument(QJsonObject{{"frames", frames}, {"meta", meta}})};
 }

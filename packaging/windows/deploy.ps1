@@ -2,7 +2,7 @@
 $ErrorActionPreference = 'Stop'
 $root = Resolve-Path "$PSScriptRoot\..\.."
 Set-Location $root
-$ver = '0.1.0'
+$ver = '0.1.1'
 
 cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build-release
