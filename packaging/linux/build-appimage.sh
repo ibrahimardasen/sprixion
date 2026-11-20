@@ -18,7 +18,9 @@ rm -rf build-release/AppDir
 
 export PATH="$tools:$PATH"
 export APPIMAGE_EXTRACT_AND_RUN=1 # no FUSE needed (CI, containers)
-export QMAKE=${QMAKE:-$(command -v qmake6 || command -v qmake)}
+QMAKE=${QMAKE:-$(command -v qmake6 || command -v qmake || true)}
+[ -n "$QMAKE" ] || { echo "qmake not found: put Qt on PATH or set QMAKE" >&2; exit 1; }
+export QMAKE
 export EXTRA_QT_PLUGINS="iconengines;imageformats" # SVG icons are loaded at runtime, so make sure they ship
 export EXTRA_PLATFORM_PLUGINS=libqoffscreen.so # lets CI smoke-test headless
 export LINUXDEPLOY_OUTPUT_VERSION=0.1.0
@@ -26,4 +28,5 @@ linuxdeploy-x86_64.AppImage --appdir build-release/AppDir --plugin qt \
   --executable build-release/src/app/sprixion \
   --desktop-file packaging/linux/sprixion.desktop \
   --icon-file packaging/linux/sprixion.png \
+  --custom-apprun packaging/linux/AppRun \
   --output appimage
