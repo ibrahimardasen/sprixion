@@ -17,6 +17,11 @@ jobs:
           cmake --build build
           QT_QPA_PLATFORM=offscreen ctest --test-dir build --output-on-failure
       - run: packaging/linux/build-appimage.sh
+      - name: Smoke test AppImage (exit 124 = still running = pass)
+        run: |
+          set +e
+          QT_QPA_PLATFORM=offscreen timeout 5 ./Sprixion-0.1.0-x86_64.AppImage
+          [ $? -eq 124 ]
       - uses: actions/upload-artifact@v4
         with:
           name: appimage

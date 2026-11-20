@@ -1,0 +1,5 @@
+#!/bin/sh
+# Qt finds qt.conf relative to the exe, which fails when started through AppRun; point it at the plugins directly.
+here=$(dirname "$(readlink -f "$0")")
+export QT_PLUGIN_PATH="$here/usr/plugins"
+exec "$here/usr/bin/sprixion" "$@"

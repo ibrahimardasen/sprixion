@@ -2,8 +2,7 @@ build/
 *.user
 .cache/
 .superpowers/
-.cache/
 build-release/
 *.AppImage
-*.zip
-*.exe
+/*.zip
+/*.exe

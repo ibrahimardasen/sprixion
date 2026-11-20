@@ -8,11 +8,11 @@ cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build-release
 if ($LASTEXITCODE) { throw 'build failed' }
 
-$dist = "build-release\Sprixion-$ver-win64"
+$dist = "build-release\Sprixion-$ver"
 Remove-Item -Recurse -Force $dist -ErrorAction SilentlyContinue
 New-Item -ItemType Directory $dist | Out-Null
 Copy-Item build-release\src\app\sprixion.exe $dist
-windeployqt --release --no-translations "$dist\sprixion.exe"
+windeployqt --release --compiler-runtime --no-translations "$dist\sprixion.exe"
 if ($LASTEXITCODE) { throw 'windeployqt failed' }
 # Svg icons load at runtime; don't rely on windeployqt noticing them.
 foreach ($p in 'iconengines\qsvgicon.dll', 'imageformats\qsvg.dll') {
@@ -23,7 +23,7 @@ foreach ($p in 'iconengines\qsvgicon.dll', 'imageformats\qsvg.dll') {
   }
 }
 
-Compress-Archive -Force -Path "$dist\*" -DestinationPath "Sprixion-$ver-win64.zip"
+Compress-Archive -Force -Path $dist -DestinationPath "Sprixion-$ver-win64.zip"
 
 $iscc = (Get-Command iscc -ErrorAction SilentlyContinue).Source
 if (-not $iscc) { $iscc = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' }
