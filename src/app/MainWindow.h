@@ -2,7 +2,6 @@
 #include "Document.h"
 #include "tools/Tool.h"
 #include <QMainWindow>
-
 #include <QUndoGroup>
 #include <functional>
 #include <memory>
