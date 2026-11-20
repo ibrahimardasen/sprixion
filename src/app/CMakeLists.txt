@@ -1,6 +1,6 @@
 qt_add_executable(sprixion
     main.cpp
-    MainWindow.h MainWindow.cpp FileActions.cpp
+    MainWindow.h MainWindow.cpp FileActions.cpp Autosave.h Autosave.cpp
     CanvasView.h CanvasView.cpp
     NewSpriteDialog.h NewSpriteDialog.cpp
     ResizeCanvasDialog.h ResizeCanvasDialog.cpp

@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "Autosave.h"
 #include "CanvasView.h"
 #include "ColorPicker.h"
 #include "LayersPanel.h"
@@ -14,6 +15,7 @@
 #include "tools/ShapeTool.h"
 #include <QActionGroup>
 #include <QClipboard>
+#include <QCloseEvent>
 #include <QDockWidget>
 #include <QDialogButtonBox>
 #include <QFileInfo>
@@ -44,7 +46,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_canvas(new Canv
     showZoom(m_canvas->zoom());
     connect(&m_undo, &QUndoGroup::cleanChanged, this, [this](bool clean) { setWindowModified(!clean); });
 
+    m_autosave = new Autosave(this);
     setDocument(std::make_unique<Document>(makeSprite({32, 32})));
+    m_autosave->start();
     resize(1280, 800);
     m_canvas->setFocus();
 }
@@ -241,9 +245,20 @@ void MainWindow::setDocument(std::unique_ptr<Document> doc)
     m_undo.addStack(doc->undoStack());
     m_undo.setActiveStack(doc->undoStack());
     m_doc = std::move(doc); // the old document and its stack go away here
+    m_autosave->clear(); // the replaced document's recovery file is stale
     emit documentChanged(m_doc.get());
     setWindowModified(m_doc->isModified());
     updateTitle();
+}
+
+void MainWindow::closeEvent(QCloseEvent *e)
+{
+    if (!maybeSave()) {
+        e->ignore();
+        return;
+    }
+    m_autosave->clear();
+    e->accept();
 }
 
 void MainWindow::updateTitle()

@@ -2,11 +2,13 @@
 #include "Document.h"
 #include "tools/Tool.h"
 #include <QMainWindow>
+
 #include <QUndoGroup>
 #include <functional>
 #include <memory>
 #include <vector>
 
+class Autosave;
 class CanvasView;
 class ColorPicker;
 class Timeline;
@@ -21,10 +23,14 @@ public:
     bool save();
     bool saveAs();
     spx::Document *document() const { return m_doc.get(); }
+    void offerRecovery(); // startup: ask to restore documents left behind by a crash
 
 signals:
     void documentChanged(spx::Document *doc); // after New/Open/Import; docks re-bind here
     void currentChanged();                     // the current layer or frame changed through setCurrent()
+
+protected:
+    void closeEvent(QCloseEvent *e) override;
 
 private:
     void createToolBar();
@@ -49,6 +55,7 @@ private:
     void exportFrame();
     void exportSheet();
     void importPalette();
+    bool maybeSave(); // Save / Don't Save / Cancel; false = abort the action
     QString suggestedPath(const QString &suffix) const;
 
     CanvasView *m_canvas;
@@ -58,4 +65,5 @@ private:
     QAction *m_selectTool = nullptr;
     ColorPicker *m_picker = nullptr;
     Timeline *m_timeline = nullptr;
+    Autosave *m_autosave = nullptr;
 };
