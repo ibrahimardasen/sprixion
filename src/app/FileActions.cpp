@@ -1,5 +1,6 @@
 // MainWindow: file commands (new, open, save, import, export).
 #include "MainWindow.h"
+#include "Autosave.h"
 #include "CanvasView.h"
 #include "Compositor.h"
 #include "ExportSheetDialog.h"
@@ -10,9 +11,11 @@
 #include "io/SprxIO.h"
 #include <QBuffer>
 #include <QCoreApplication>
+#include <QDateTime>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QMessageBox>
+#include <QPushButton>
 #include <QSaveFile>
 
 using namespace spx;
@@ -48,13 +51,13 @@ QString MainWindow::suggestedPath(const QString &suffix) const
 void MainWindow::newSprite()
 {
     NewSpriteDialog d(this);
-    if (d.exec() == QDialog::Accepted) setDocument(std::make_unique<Document>(makeSprite(d.spriteSize())));
+    if (d.exec() == QDialog::Accepted && maybeSave()) setDocument(std::make_unique<Document>(makeSprite(d.spriteSize())));
 }
 
 void MainWindow::openDialog()
 {
     const QString path = QFileDialog::getOpenFileName(this, tr("Open Sprite"), QString(), tr("Sprixion sprite (*.sprx)"));
-    if (!path.isEmpty()) openFile(path);
+    if (!path.isEmpty() && maybeSave()) openFile(path);
 }
 
 bool MainWindow::openFile(const QString &path)
@@ -81,6 +84,7 @@ bool MainWindow::save()
         return false;
     }
     m_doc->undoStack()->setClean();
+    m_autosave->clear();
     return true;
 }
 
@@ -107,6 +111,7 @@ void MainWindow::importPng()
                                            : tr("The image is %1×%2 pixels; Sprixion supports up to 2048×2048.").arg(img.width()).arg(img.height()));
         return;
     }
+    if (!maybeSave()) return;
     Sprite s = makeSprite(img.size());
     celForWrite(s, 0, 0) = img.convertToFormat(QImage::Format_ARGB32);
     setDocument(std::make_unique<Document>(std::move(s)));
@@ -149,4 +154,39 @@ void MainWindow::importPalette()
     Sprite s = m_doc->sprite();
     s.palette = *colors;
     m_doc->apply(tr("Import Palette"), std::move(s));
+}
+
+bool MainWindow::maybeSave()
+{
+    if (!m_doc->isModified()) return true;
+    const QString name = m_doc->filePath.isEmpty() ? tr("Untitled") : QFileInfo(m_doc->filePath).fileName();
+    const auto r = QMessageBox::question(this, tr("Unsaved Changes"), tr("Save changes to %1?").arg(name),
+                                         QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel, QMessageBox::Save);
+    return r == QMessageBox::Discard || (r == QMessageBox::Save && save()); // a cancelled or failed save aborts
+}
+
+void MainWindow::offerRecovery()
+{
+    for (const QString &path : Autosave::pendingRecoveries()) {
+        const QJsonObject meta = Autosave::info(path);
+        const QString original = meta.value(QLatin1String("originalPath")).toString();
+        const QString name = original.isEmpty() ? tr("Untitled") : QFileInfo(original).fileName();
+        const QDateTime time = QDateTime::fromString(meta.value(QLatin1String("savedAt")).toString(), Qt::ISODate);
+        QMessageBox box(QMessageBox::Question, tr("Recover Unsaved Work"),
+                        tr("Sprixion did not close cleanly. Restore %1 (autosaved %2)?").arg(name, QLocale().toString(time, QLocale::ShortFormat)), QMessageBox::NoButton, this);
+        QPushButton *restore = box.addButton(tr("Restore"), QMessageBox::AcceptRole);
+        box.addButton(tr("Discard"), QMessageBox::DestructiveRole);
+        box.exec();
+        QString error;
+        std::optional<Sprite> s = box.clickedButton() == restore ? loadSprx(path, &error) : std::nullopt;
+        if (box.clickedButton() == restore && !s)
+            QMessageBox::critical(this, tr("Recovery Failed"), tr("Could not restore %1:\n%2").arg(name, error));
+        Autosave::discard(path);
+        if (!s) continue;
+        auto doc = std::make_unique<Document>(std::move(*s));
+        doc->filePath = original;
+        doc->undoStack()->resetClean(); // restored work is unsaved
+        setDocument(std::move(doc));
+        return; // any other recoveries stay on disk for the next launch
+    }
 }
