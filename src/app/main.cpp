@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
     if (qss.open(QIODevice::ReadOnly)) app.setStyleSheet(QString::fromUtf8(qss.readAll()));
 
     QTranslator translator;
-    if (translator.load(QStringLiteral(":/i18n/sprixion_") + QLocale::system().name()))
+    if (translator.load(QLocale(), QStringLiteral("sprixion"), QStringLiteral("_"), QStringLiteral(":/i18n")))
         app.installTranslator(&translator);
 
     MainWindow window;
