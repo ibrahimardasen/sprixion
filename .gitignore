@@ -1,0 +1,9 @@
+build/
+*.user
+.cache/
+.superpowers/
+build-release/
+*.AppImage
+/*.zip
+/*.exe
+docs/superpowers/

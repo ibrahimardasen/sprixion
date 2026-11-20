@@ -1,0 +1,52 @@
+name: build
+on: [push, pull_request]
+
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: 6.5.3
+      - name: System libraries
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libgl1-mesa-dev libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-xinerama0 libxcb-shape0
+      - name: Test
+        run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+          QT_QPA_PLATFORM=offscreen ctest --test-dir build --output-on-failure
+      - run: packaging/linux/build-appimage.sh
+      - name: Smoke test AppImage (exit 124 = still running = pass)
+        run: |
+          set +e
+          QT_QPA_PLATFORM=offscreen timeout 5 ./Sprixion-0.1.0-x86_64.AppImage
+          [ $? -eq 124 ]
+      - uses: actions/upload-artifact@v4
+        with:
+          name: appimage
+          path: Sprixion-*.AppImage
+
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: 6.5.3
+          arch: win64_msvc2019_64
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Test
+        run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+          ctest --test-dir build --output-on-failure
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - run: packaging/windows/deploy.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            Sprixion-*-win64.zip
+            Sprixion-*-setup.exe
