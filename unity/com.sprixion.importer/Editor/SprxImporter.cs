@@ -46,7 +46,7 @@ namespace Sprixion.Importer
             {
                 name = name, filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp
             };
-            var rects = new List<(Rect Rect, string Name)>();
+            var rects = new List<(Rect Rect, string Id, string Name)>();
             for (int i = 0; i < cols * rows; i++)
             {
                 // Row-major from the top; Unity's texture origin is bottom-left.
@@ -54,26 +54,25 @@ namespace Sprixion.Importer
                 if (i >= n) { atlas.SetPixels32(x, y, w, h, new Color32[w * h]); continue; }
                 var px = f.Flats[i].GetPixels32(); // bottom row first
                 atlas.SetPixels32(x, y, w, h, px);
-                if (f.Grid == null) { rects.Add((new Rect(x, y, w, h), $"{name}_{i}")); continue; }
+                if (f.Grid == null) { rects.Add((new Rect(x, y, w, h), $"frame_{i}", $"{name}_{i}")); continue; }
 
                 var g = f.Grid;
                 int index = 0;
                 for (int cy = g.offsetY; cy + g.cellHeight <= h; cy += g.cellHeight + g.spacingY)
                     for (int cx = g.offsetX; cx + g.cellWidth <= w; cx += g.cellWidth + g.spacingX, index++)
                         if (!IsEmpty(px, w, h, cx, cy, g.cellWidth, g.cellHeight))
-                            rects.Add((new Rect(x + cx, y + h - cy - g.cellHeight, g.cellWidth, g.cellHeight), $"{name}_{i}_{index}"));
+                            rects.Add((new Rect(x + cx, y + h - cy - g.cellHeight, g.cellWidth, g.cellHeight), $"frame_{i}_{index}", $"{name}_{i}_{index}"));
             }
-            f.DestroyFlats();
             atlas.Apply(false);
             ctx.AddObjectToAsset("texture", atlas);
             ctx.SetMainObject(atlas);
 
             var sprites = new List<Sprite>();
-            foreach (var (rect, spriteName) in rects)
+            foreach (var (rect, id, spriteName) in rects)
             {
                 var s = Sprite.Create(atlas, rect, pivot, pixelsPerUnit, 0, SpriteMeshType.FullRect);
                 s.name = spriteName;
-                ctx.AddObjectToAsset(spriteName, s);
+                ctx.AddObjectToAsset(id, s); // ids don't depend on the file name, so renaming keeps references
                 sprites.Add(s);
             }
             if (f.Grid != null) return;
