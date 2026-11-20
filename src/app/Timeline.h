@@ -14,7 +14,7 @@ class Timeline : public QWidget
 {
     Q_OBJECT
 public:
-    // `settle` drops floating pixels before a frame op; `select` is MainWindow's single path for changing layer/frame.
+    // `settle` drops floating pixels before a frame or tag edit; `select` is MainWindow's single path for changing layer/frame.
     Timeline(CanvasView *canvas, std::function<void()> settle, std::function<void(int layer, int frame)> select, QWidget *parent = nullptr);
     void setDocument(spx::Document *doc);
     QToolBar *toolBar() const { return m_bar; } // MainWindow places it above the scroll area and adds the onion controls

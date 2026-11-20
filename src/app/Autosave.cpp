@@ -19,18 +19,18 @@ Autosave::Autosave(MainWindow *window) : QObject(window), m_window(window)
     connect(&m_timer, &QTimer::timeout, this, &Autosave::write);
 }
 
-void Autosave::write()
+bool Autosave::write()
 {
     const spx::Document *doc = m_window->document();
-    if (!doc->isModified()) return clear(); // e.g. undone back to the clean point: an older recovery would be stale
+    if (!doc->isModified()) { clear(); return true; } // e.g. undone back to the clean point: an older recovery would be stale
     // shortcut: floating selection pixels are not dropped first (that would alter live editing state), so they are missing from the recovery file; fine until recovery must be exact.
     QDir().mkpath(recoveryDir());
     QSaveFile f(m_base + QLatin1String(".json")); // metadata first: a .sprx never sits next to missing or stale metadata
-    if (!f.open(QIODevice::WriteOnly)) return;
+    if (!f.open(QIODevice::WriteOnly)) return false;
     const QJsonObject meta{{QStringLiteral("originalPath"), doc->filePath}, {QStringLiteral("savedAt"), QDateTime::currentDateTime().toString(Qt::ISODate)}};
-    if (f.write(QJsonDocument(meta).toJson()) < 0 || !f.commit()) return;
+    if (f.write(QJsonDocument(meta).toJson()) < 0 || !f.commit()) return false;
     QString error;
-    spx::saveSprx(doc->sprite(), m_base + QLatin1String(".sprx"), &error); // silent: the next tick retries
+    return spx::saveSprx(doc->sprite(), m_base + QLatin1String(".sprx"), &error); // silent: the next tick retries
 }
 
 void Autosave::clear() { discard(m_base + QLatin1String(".sprx")); }

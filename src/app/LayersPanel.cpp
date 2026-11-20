@@ -57,18 +57,21 @@ LayersPanel::LayersPanel(CanvasView *canvas, std::function<void()> settle, std::
         const QString name = it->text();
         const bool visible = it->checkState() == Qt::Checked;
         if (name == l.name && visible == l.visible) return;
-        m_doc->apply(visible != l.visible ? tr("Toggle Layer Visibility") : tr("Rename Layer"),
-                     setLayerProps(m_doc->sprite(), layer, name, visible, l.opacity));
+        const QString text = visible != l.visible ? tr("Toggle Layer Visibility") : tr("Rename Layer");
+        m_settle(); // a drop rewrites the sprite: `l` is not used past here
+        m_doc->apply(text, setLayerProps(m_doc->sprite(), layer, name, visible, m_doc->sprite().layers[layer].opacity));
     });
     // A drag previews without undo entries, then restores and applies once; keys and wheel apply per change.
-    connect(m_opacity, &QSlider::sliderPressed, this, [this] { if (!m_doc) return; m_dragging = true; m_beforeDrag = m_doc->sprite(); });
+    connect(m_opacity, &QSlider::sliderPressed, this, [this] { if (!m_doc) return; m_settle(); m_dragging = true; m_beforeDrag = m_doc->sprite(); });
     connect(m_opacity, &QSlider::sliderMoved, this, [this](int v) { setProps(m_canvas->context().layer, m_beforeDrag, v, false); });
     connect(m_opacity, &QSlider::sliderReleased, this, [this] {
         m_dragging = false;
         setProps(m_canvas->context().layer, m_beforeDrag, m_opacity->value(), true);
     });
     connect(m_opacity, &QSlider::valueChanged, this, [this](int v) {
-        if (!m_syncing && !m_opacity->isSliderDown() && m_doc) setProps(m_canvas->context().layer, m_doc->sprite(), v, true);
+        if (m_syncing || m_opacity->isSliderDown() || !m_doc) return;
+        m_settle();
+        setProps(m_canvas->context().layer, m_doc->sprite(), v, true);
     });
 }
 

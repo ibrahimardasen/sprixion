@@ -14,6 +14,7 @@ void liftSelection(Document& d, Selection& s, int layer, int frame)
     s.floating = before.convertToFormat(QImage::Format_ARGB32);
     s.floatingPos = r.topLeft();
     s.rect = r;
+    s.lifted = true;
     QPainter p(&cel);
     p.setCompositionMode(QPainter::CompositionMode_Source);
     p.fillRect(r, Qt::transparent);
@@ -36,6 +37,7 @@ void dropSelection(Document& d, Selection& s, int layer, int frame)
         d.touch(r);
     }
     s.floating = QImage();
+    s.lifted = false;
     s.rect = r;
 }
 

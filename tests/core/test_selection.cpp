@@ -29,6 +29,14 @@ private slots:
         dropSelection(d, s, 0, 0);
         QVERIFY(set(d, 3, 3)); QVERIFY(set(d, 2, 2)); QVERIFY(!set(d, 1, 1)); QCOMPARE(s.rect, QRect(2, 2, 2, 2));
     }
+    void liftedOnlyWhileFloatingFromCel() { // MainWindow's undo skips undo() for a paste: nothing of it is on the stack
+        Document d(makeSprite({4, 4})); d.liveCel(0, 0).setPixel(1, 1, QColor(Qt::red).rgba());
+        Selection s; s.rect = QRect(1, 1, 1, 1);
+        liftSelection(d, s, 0, 0); QVERIFY(s.lifted);
+        QImage img(1, 1, QImage::Format_ARGB32); img.fill(Qt::blue);
+        pasteImage(d, s, 0, 0, img, {0, 0}); QVERIFY(s.isFloating()); QVERIFY(!s.lifted); // the lift was dropped first
+        dropSelection(d, s, 0, 0); QVERIFY(!s.lifted);
+    }
     void flipFloating() {
         Document d(makeSprite({4, 4})); Selection s;
         QImage i(2, 1, QImage::Format_ARGB32); i.setPixel(0, 0, QColor(Qt::red).rgba()); i.setPixel(1, 0, QColor(Qt::blue).rgba());

@@ -12,6 +12,7 @@
 #include <QBuffer>
 #include <QCoreApplication>
 #include <QDateTime>
+#include <QDir>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QMessageBox>
@@ -43,7 +44,7 @@ static QByteArray pngBytes(const QImage &img)
 
 QString MainWindow::suggestedPath(const QString &suffix) const
 {
-    if (m_doc->filePath.isEmpty()) return tr("untitled") + suffix;
+    if (m_doc->filePath.isEmpty()) return QDir::homePath() + QLatin1Char('/') + tr("untitled") + suffix; // not the cwd, which may be read-only (AppImage mount, Program Files)
     const QFileInfo fi(m_doc->filePath);
     return fi.path() + QLatin1Char('/') + fi.completeBaseName() + suffix;
 }
@@ -151,6 +152,7 @@ void MainWindow::importPalette()
         QMessageBox::critical(this, tr("Import Failed"), tr("Could not import %1:\n%2").arg(QFileInfo(path).fileName(), error));
         return;
     }
+    settleSelection();
     Sprite s = m_doc->sprite();
     s.palette = *colors;
     m_doc->apply(tr("Import Palette"), std::move(s));
@@ -183,12 +185,12 @@ void MainWindow::offerRecovery()
         std::optional<Sprite> s = box.clickedButton() == restore ? loadSprx(path, &error) : std::nullopt;
         if (box.clickedButton() == restore && !s)
             QMessageBox::critical(this, tr("Recovery Failed"), tr("Could not restore %1:\n%2").arg(name, error));
-        Autosave::discard(path);
-        if (!s) continue;
+        if (!s) { Autosave::discard(path); continue; }
         auto doc = std::make_unique<Document>(std::move(*s));
         doc->filePath = original;
         doc->undoStack()->resetClean(); // restored work is unsaved
         setDocument(std::move(doc));
+        if (m_autosave->write()) Autosave::discard(path); // a crash before the next tick must not lose the restored work
         return; // any other recoveries stay on disk for the next launch
     }
 }

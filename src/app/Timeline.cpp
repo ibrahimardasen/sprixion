@@ -182,7 +182,7 @@ void Timeline::contextMenuEvent(QContextMenuEvent *e)
     QMenu menu(this);
     if (h.tag >= 0) {
         menu.addAction(tr("Edit Tag…"), this, [this, i = h.tag] { editTag(i); });
-        menu.addAction(tr("Delete Tag"), this, [this, i = h.tag] { m_doc->apply(tr("Delete Tag"), removeTag(m_doc->sprite(), i)); });
+        menu.addAction(tr("Delete Tag"), this, [this, i = h.tag] { m_settle(); m_doc->apply(tr("Delete Tag"), removeTag(m_doc->sprite(), i)); });
         menu.exec(e->globalPos());
         return;
     }
@@ -231,6 +231,7 @@ void Timeline::editDurations(int f)
     bool ok = false;
     const int ms = QInputDialog::getInt(this, tr("Frame Duration"), tr("Duration (ms):"), m_doc->sprite().frames[f].durationMs, 1, 65535, 1, &ok);
     if (!ok) return;
+    m_settle();
     Sprite s = m_doc->sprite();
     for (int i = lo; i <= hi; ++i) s = setFrameDuration(std::move(s), i, ms);
     m_doc->apply(tr("Frame Duration"), std::move(s));
@@ -241,7 +242,9 @@ void Timeline::newTag()
     const auto [lo, hi] = selection();
     bool ok = false;
     const QString name = QInputDialog::getText(this, tr("New Tag"), tr("Name:"), QLineEdit::Normal, tr("Tag"), &ok).trimmed();
-    if (ok && !name.isEmpty()) m_doc->apply(tr("New Tag"), addTag(m_doc->sprite(), Tag{name, lo, hi}));
+    if (!ok || name.isEmpty()) return;
+    m_settle();
+    m_doc->apply(tr("New Tag"), addTag(m_doc->sprite(), Tag{name, lo, hi}));
 }
 
 void Timeline::editTag(int index)
@@ -263,6 +266,7 @@ void Timeline::editTag(int index)
     form->addRow(buttons);
     if (d.exec() != QDialog::Accepted || name->text().trimmed().isEmpty()) return;
     const auto [a, b] = std::minmax({from->value() - 1, to->value() - 1}); // initializer_list form returns values, not refs
+    m_settle();
     m_doc->apply(tr("Edit Tag"), setTag(m_doc->sprite(), index, Tag{name->text().trimmed(), a, b}));
 }
 

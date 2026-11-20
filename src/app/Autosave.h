@@ -17,9 +17,9 @@ public:
     static QStringList pendingRecoveries(); // recovery .sprx paths, newest first
     static QJsonObject info(const QString &recoveryPath); // {"originalPath", "savedAt"}; empty if unreadable
     static void discard(const QString &recoveryPath); // delete the .sprx and its .json
+    bool write(); // false if the recovery file could not be written
 
 private:
-    void write();
     MainWindow *m_window;
     QTimer m_timer;
     QString m_base; // <dir>/<session uuid>, no suffix
