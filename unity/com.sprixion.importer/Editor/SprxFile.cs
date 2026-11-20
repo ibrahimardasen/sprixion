@@ -1,4 +1,5 @@
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -34,6 +35,9 @@ namespace Sprixion.Importer
             Flats.Clear();
         }
 
+        // PNG signature, then the IHDR chunk's length (13) and type; width and height follow big-endian.
+        static readonly byte[] PngHead = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52 };
+
         static InvalidDataException Bad(string why) => new InvalidDataException("Not a valid Sprixion file: " + why);
 
         void Load(byte[] data)
@@ -68,10 +72,14 @@ namespace Sprixion.Importer
                 var fr = m.frames[i];
                 if (fr.duration <= 0) throw Bad($"frame {i} has duration {fr.duration} ms.");
                 DurationsMs.Add(fr.duration);
+                var png = Entry(zip, fr.flat, 2048L * 2048 * 4 + (1 << 20));
+                // Size from the header before decoding: LoadImage allocates whatever a tiny PNG claims.
+                if (png.Length < 24 || !png.AsSpan(0, 16).SequenceEqual(PngHead)) throw Bad($"{fr.flat} is not a PNG.");
+                int pw = BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(16)), ph = BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(20));
+                if (pw != Width || ph != Height) throw Bad($"{fr.flat} is {pw}x{ph}, not {Width}x{Height}.");
                 var tex = new Texture2D(2, 2);
                 Flats.Add(tex); // added first so a failure below still frees it
-                if (!tex.LoadImage(Entry(zip, fr.flat, 2048L * 2048 * 4 + (1 << 20)))) throw Bad($"{fr.flat} is not a PNG.");
-                if (tex.width != Width || tex.height != Height) throw Bad($"{fr.flat} is {tex.width}x{tex.height}, not {Width}x{Height}.");
+                if (!tex.LoadImage(png)) throw Bad($"{fr.flat} is not a PNG.");
             }
         }
 
