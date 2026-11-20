@@ -142,13 +142,7 @@ Sprite cropCanvas(Sprite s, QRect r)
 Sprite flipSprite(Sprite s, Qt::Orientation o)
 {
     const bool h = o == Qt::Horizontal;
-    forCels(s, [&](const QImage &c) {
-#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
-        return c.flipped(h ? Qt::Horizontal : Qt::Vertical).convertToFormat(QImage::Format_ARGB32);
-#else
-        return c.mirrored(h, !h).convertToFormat(QImage::Format_ARGB32);
-#endif
-    });
+    forCels(s, [&](const QImage &c) { return c.transformed(QTransform::fromScale(h ? -1 : 1, h ? 1 : -1)).convertToFormat(QImage::Format_ARGB32); });
     return s;
 }
 

@@ -1,9 +1,5 @@
 #pragma once
 #include "Sprite.h"
-#include <QImage>
-#include <QObject>
-#include <QRect>
-#include <QString>
 #include <QUndoStack>
 
 namespace spx {
