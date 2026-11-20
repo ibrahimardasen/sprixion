@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Sprixion
+Comment=Pixel-art editor
+Exec=sprixion
+Icon=sprixion
+Categories=Graphics;2DGraphics;RasterGraphics;
+Terminal=false
