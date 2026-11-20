@@ -6,3 +6,4 @@ build-release/
 *.AppImage
 /*.zip
 /*.exe
+docs/superpowers/
