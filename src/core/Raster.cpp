@@ -70,10 +70,9 @@ QVector<QPoint> ellipse(QRect r, bool filled)
 QVector<QPoint> mirror(const QVector<QPoint>& pts, QSize canvas, bool h, bool v)
 {
     QVector<QPoint> out;
-    QSet<quint64> seen;
+    QSet<QPoint> seen;
     auto add = [&](QPoint p) {
-        const quint64 k = (quint64(quint32(p.x())) << 32) | quint32(p.y());
-        if (!seen.contains(k)) { seen.insert(k); out.append(p); }
+        if (!seen.contains(p)) { seen.insert(p); out.append(p); }
     };
     for (QPoint p : pts) {
         add(p);
