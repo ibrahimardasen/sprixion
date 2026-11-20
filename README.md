@@ -49,7 +49,7 @@ The importer is editor-only, so nothing from it ends up in your game builds.
 
 ## Download
 
-There is no tagged release yet. Builds for every commit are attached to the [Actions runs](https://github.com/ibrahimardasen/sprixion/actions) as artifacts:
+Get the latest build from the [Releases page](https://github.com/ibrahimardasen/sprixion/releases):
 - **Linux:** an AppImage. Make it executable and run it.
 - **Windows:** a zip and a `setup.exe` installer.
 
